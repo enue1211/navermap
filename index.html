@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>장소 옵션 필터 프로토타입</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root { --green: #03c75a; --ink: #17211b; --muted: #68736d; --line: #e4e9e5; --paper: #fff; --soft: #f4f7f5; --coral: #ef6255; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 10%, #f6fbf7 0, #dfe9e2 45%, #cbd9cf 100%); color: var(--ink); font-family: 'Noto Sans KR', sans-serif; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app { width: min(100%, 430px); height: min(900px, 100vh); min-height: 700px; margin: auto; background: var(--paper); position: relative; overflow: hidden; box-shadow: 0 24px 70px rgba(26,48,35,.2); }
+    .map-side { position: absolute; inset: 0; background: #d9eadb; }
+    #map { width: 100%; height: 100%; }
+    .map-overlay { position: absolute; z-index: 500; inset: 16px 16px auto; pointer-events: none; }
+    .map-header { position: fixed; z-index: 2000; top: 58px; left: 50%; width: min(406px, calc(100vw - 24px)); transform: translateX(-50%); isolation: isolate; pointer-events: auto !important; }
+    .top-search { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; border: 1px solid rgba(0,0,0,.06); border-radius: 14px; background: rgba(255,255,255,.97); box-shadow: 0 8px 22px rgba(26,48,35,.14); }
+    .top-search-icon { color: var(--green); font-size: 18px; line-height: 1; }
+    .top-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 14px; font-weight: 600; }
+    .top-search input::placeholder { color: var(--muted); font-weight: 500; }
+    .top-search button { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--soft); color: var(--muted); line-height: 1; }
+    .quick-filters { display: flex; flex-wrap: nowrap; gap: 7px; width: 100%; margin-top: 8px; padding: 1px 2px 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; cursor: grab; }
+    .quick-filters:active { cursor: grabbing; }
+    .quick-filters::-webkit-scrollbar { display: none; }
+    .quick-filter { flex: 0 0 auto; padding: 7px 11px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.96); color: var(--muted); box-shadow: 0 4px 12px rgba(26,48,35,.1); font-size: 11px; white-space: nowrap; touch-action: manipulation; pointer-events: auto !important; }
+    .quick-filter.active { border-color: var(--green); background: var(--green); color: #fff; font-weight: 700; }
+    .brand { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(26,48,35,.12); font-weight: 800; pointer-events: auto; }
+    .brand-mark { width: 24px; height: 24px; border-radius: 8px 8px 8px 2px; background: var(--green); display: grid; place-items: center; color: #fff; font-size: 13px; }
+    .map-note { margin-top: 10px; width: max-content; max-width: 100%; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.84); color: var(--muted); font-size: 12px; }
+    .leaflet-popup { margin-bottom: 12px; }
+    .leaflet-popup-content-wrapper { width: min(250px, calc(100vw - 48px)); border-radius: 16px; box-shadow: 0 10px 26px rgba(26,48,35,.2); }
+    .leaflet-popup-content { width: auto !important; margin: 12px 14px; font-weight: 700; line-height: 1.45; }
+    .panel { position: absolute; z-index: 600; inset: auto 0 0; max-height: 74%; padding: 22px 18px 30px; overflow: auto; background: rgba(255,255,255,.98); border-radius: 26px 26px 0 0; box-shadow: 0 -14px 34px rgba(26,48,35,.16); transform: translateY(0); transition: transform .28s ease; }
+    .panel.browse { max-height: 67%; }
+    .panel.hidden { transform: translateY(calc(100% - 40px)); }
+    .panel-handle { width: 42px; height: 5px; border-radius: 8px; margin: -9px auto 17px; background: #d4ded7; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .eyebrow { margin: 0 0 8px; color: var(--green); font: 700 12px 'Outfit', sans-serif; letter-spacing: 0; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 28px; line-height: 1.18; letter-spacing: 0; }
+    .intro { margin: 10px 0 24px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .search { display: flex; gap: 8px; margin-bottom: 14px; }
+    .search input { min-width: 0; flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; outline: none; }
+    .search input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(3,199,90,.12); }
+    .reset { border: 1px solid var(--line); background: var(--soft); border-radius: 12px; padding: 0 13px; color: var(--muted); white-space: nowrap; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 17px 0 10px; }
+    .section-head h2 { margin: 0; font-size: 16px; }
+    .count { color: var(--muted); font-size: 12px; }
+    .add-condition { border: 0; padding: 0; background: transparent; color: var(--green); font-size: 12px; font-weight: 700; }
+    .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .filters:not(.expanded) .filter:not(.active) { display: none; }
+    .filter { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--muted); text-align: left; transition: .18s ease; }
+    .filter:hover { border-color: #9bd9b5; }
+    .filter.active { border-color: var(--green); background: #edfbf2; color: #08783a; font-weight: 700; }
+    .filter-state { width: 28px; height: 18px; border-radius: 20px; background: #d9e0dc; position: relative; flex: 0 0 auto; }
+    .filter-state::after { content: ''; position: absolute; width: 14px; height: 14px; top: 2px; left: 2px; border-radius: 50%; background: #fff; transition: .18s ease; box-shadow: 0 1px 3px #0002; }
+    .filter.active .filter-state { background: var(--green); }
+    .filter.active .filter-state::after { left: 12px; }
+    .results-meta { padding: 14px 0 5px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    .results-meta strong { color: var(--green); }
+    .result-group { margin-top: 16px; }
+    .result-group h3 { display: flex; justify-content: space-between; margin: 0 0 9px; font-size: 13px; color: var(--muted); }
+    .result-group h3 span { color: var(--green); }
+    .result-group.partial h3 span { color: var(--coral); }
+    .cards { display: grid; gap: 9px; }
+    .place-card { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: left; transition: .18s ease; }
+    .place-card:hover, .place-card.selected { border-color: var(--green); background: #f8fdf9; transform: translateY(-1px); }
+    .place-card img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--soft); }
+    .place-name { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
+    .place-sub { margin: 0; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+    .tag { padding: 3px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); font-size: 10px; }
+    .tag.on { background: #e2f8e9; color: #08783a; }
+    .tag.missing { background: #fff0ee; color: #c24c43; }
+    .empty { padding: 28px 14px; border: 1px dashed #cbd8ce; border-radius: 13px; color: var(--muted); text-align: center; font-size: 13px; }
+    .back-button { border: 0; background: transparent; padding: 0 0 12px; color: var(--muted); font-size: 13px; }
+    .situation-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 24px; }
+    .situation { min-height: 92px; padding: 12px 7px; border: 1px solid var(--line); border-radius: 15px; background: #fff; color: var(--ink); font-weight: 700; }
+    .situation strong { display: block; margin-bottom: 7px; font-size: 25px; }
+    .situation:hover { border-color: var(--green); background: #edfbf2; }
+    .screen-title { margin: 0; font-size: 21px; }
+    .screen-copy { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .detail { position: fixed; z-index: 1000; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 42vh; overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
+    .detail.open { display: block; }
+    .detail-top { display: flex; justify-content: space-between; gap: 12px; }
+    .detail h2 { margin: 0; font-size: 17px; }
+    .close { width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--soft); color: var(--muted); }
+    .detail p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .detail-options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+    @media (max-width: 430px) {
+      body { background: var(--paper); }
+      .app { width: 100%; height: 100vh; min-height: 640px; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="map-side" aria-label="장소 지도">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div class="brand"><span class="brand-mark">N</span><span>건대입구 장소 탐색</span></div>
+        <div class="map-note">Leaflet + OpenStreetMap · 수집된 실제 좌표로 표시됩니다</div>
+      </div>
+      <div class="map-header">
+        <label class="top-search" aria-label="장소 검색">
+          <span class="top-search-icon">⌕</span>
+          <input id="topSearch" type="search" placeholder="건대입구 맛집">
+          <button id="clearTopSearch" type="button" aria-label="검색어 지우기">×</button>
+        </label>
+        <div class="quick-filters" id="quickFilters" aria-label="빠른 옵션 필터"></div>
+      </div>
+    </section>
+    <section class="panel" id="panel">
+      <div class="panel-handle"></div>
+      <div class="screen active" id="situationScreen">
+        <p class="eyebrow">Situation Finder</p>
+        <h1>어떤 상황에서<br>방문하시나요?</h1>
+        <p class="intro">상황에 맞는 기본 조건을 먼저 적용해볼게요.</p>
+        <div class="situation-grid">
+          <button class="situation" data-situation="family" type="button"><strong>👨‍👩‍👧</strong>가족 모임</button>
+          <button class="situation" data-situation="friends" type="button"><strong>👫</strong>친구 모임</button>
+          <button class="situation" data-situation="dinner" type="button"><strong>🍻</strong>회식</button>
+        </div>
+      </div>
+      <div class="screen" id="browseScreen">
+        <button class="back-button" id="changeSituation" type="button">‹ 상황 다시 선택</button>
+        <p class="eyebrow" id="situationLabel">통합 탐색</p>
+        <h1>조건에 맞는<br>장소를 찾아보세요</h1>
+        <p class="intro">조건을 누르면 장소 리스트와 지도 마커가 함께 바뀝니다.</p>
+        <div class="section-head"><h2>편의 옵션</h2><span class="count" id="dataCount">불러오는 중...</span></div>
+        <button class="add-condition" id="addCondition" type="button">+ 조건 추가</button>
+        <div class="filters" id="filters"></div>
+        <div class="results-meta" id="summary">데이터를 불러오는 중...</div>
+        <section class="result-group"><h3>조건을 모두 만족해요 <span id="fullCount">0곳</span></h3><div class="cards" id="fullResults"></div></section>
+        <section class="result-group partial"><h3>일부 조건이 맞아요 <span id="partialCount">0곳</span></h3><div class="cards" id="partialResults"></div></section>
+      </div>
+    </section>
+  </main>
+  <aside class="detail" id="detail" aria-live="polite">
+    <div class="detail-top"><h2 id="detailName"></h2><button class="close" id="closeDetail" type="button" aria-label="상세 닫기">×</button></div>
+    <p id="detailInfo"></p><div class="detail-options" id="detailOptions"></div>
+  </aside>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const DATA_URL = './places_data_02.json';
+    const mapCenter = [37.5408, 127.0693];
+    const optionLabels = { parking: '주차', high_chair: '유아 의자', group_seats: '단체석', room: '룸', reservation: '예약', conversation: '대화하기 좋은', comfortable_seat: '편안한 좌석', pet_friendly: '반려동물', liquor_available: '콜키지 가능', late_night_early: '심야영업' };
+    const situations = {
+      family: { label: '가족 모임', options: ['parking', 'high_chair', 'group_seats'] },
+      friends: { label: '친구 모임', options: ['reservation', 'conversation', 'comfortable_seat'] },
+      dinner: { label: '회식', options: ['group_seats', 'room', 'reservation'] }
+    };
+    const state = { places: [], activeOptions: new Set(), query: '', markers: new Map(), selectedId: null, situation: null };
+    const map = L.map('map', { zoomControl: false }).setView(mapCenter, 15);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
+
+    const $ = (id) => document.getElementById(id);
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+    const getPosition = (place) => {
+      if (Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) return [Number(place.latitude), Number(place.longitude)];
+      return mapCenter;
+    };
+    const matchScore = (place) => [...state.activeOptions].filter((key) => place.parsed_options?.[key] === true).length;
+    const visiblePlaces = () => state.places.filter((place) => {
+      const haystack = `${place.name} ${place.category} ${place.address}`.toLowerCase();
+      return !state.query || haystack.includes(state.query.toLowerCase());
+    });
+    const groups = () => {
+      const places = visiblePlaces();
+      if (!state.activeOptions.size) return { full: places, partial: [] };
+      return { full: places.filter((place) => matchScore(place) === state.activeOptions.size), partial: places.filter((place) => { const score = matchScore(place); return score > 0 && score < state.activeOptions.size; }) };
+    };
+
+    function renderFilters() {
+      const keys = [...new Set(state.places.flatMap((place) => Object.keys(place.parsed_options || {})))];
+      $('filters').innerHTML = keys.map((key) => `<button class="filter ${state.activeOptions.has(key) ? 'active' : ''}" data-option="${escapeHtml(key)}" type="button"><span>${escapeHtml(optionLabels[key] || key)}</span><span class="filter-state" aria-hidden="true"></span></button>`).join('');
+      $('quickFilters').innerHTML = keys.map((key) => `<button class="quick-filter ${state.activeOptions.has(key) ? 'active' : ''}" data-quick-option="${escapeHtml(key)}" onclick="toggleQuickOption('${escapeHtml(key)}')" type="button">${escapeHtml(optionLabels[key] || key)}</button>`).join('');
+      $('filters').querySelectorAll('[data-option]').forEach((button) => button.addEventListener('click', () => {
+        const key = button.dataset.option;
+        state.activeOptions.has(key) ? state.activeOptions.delete(key) : state.activeOptions.add(key);
+        render();
+      }));
+    }
+
+    let chipDragStart = null;
+    let chipDragged = false;
+    $('quickFilters').addEventListener('pointerdown', (event) => {
+      chipDragStart = { x: event.clientX, scrollLeft: $('quickFilters').scrollLeft };
+      chipDragged = false;
+    });
+    $('quickFilters').addEventListener('pointermove', (event) => {
+      if (!chipDragStart) return;
+      if (Math.abs(event.clientX - chipDragStart.x) > 5) chipDragged = true;
+      $('quickFilters').scrollLeft = chipDragStart.scrollLeft - (event.clientX - chipDragStart.x);
+    });
+    function toggleQuickOption(key) {
+      if (chipDragged) { chipDragStart = null; return; }
+      state.activeOptions.has(key) ? state.activeOptions.delete(key) : state.activeOptions.add(key);
+      render();
+      chipDragStart = null;
+    }
+    ['pointercancel', 'lostpointercapture'].forEach((eventName) => $('quickFilters').addEventListener(eventName, () => { chipDragStart = null; }));
+
+    function placeCard(place, isPartial) {
+      const activeTags = [...state.activeOptions].map((key) => `<span class="tag ${place.parsed_options?.[key] === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)} ${place.parsed_options?.[key] === true ? '가능' : '미확인'}</span>`).join('');
+      return `<button class="place-card ${state.selectedId === place._id ? 'selected' : ''}" data-place-id="${place._id}" type="button"><img src="${escapeHtml(place.image_url || '')}" alt=""><div><p class="place-name">${escapeHtml(place.name || '이름 없음')}</p><p class="place-sub">${escapeHtml(place.category || '업종 미상')} · ${escapeHtml(place.address || '주소 미상')}</p><div class="tags">${activeTags || '<span class="tag on">전체 장소</span>'}${isPartial ? '<span class="tag missing">일부 조건</span>' : ''}</div></div></button>`;
+    }
+
+    function renderCards(id, places, partial) {
+      $(id).innerHTML = places.length ? places.map((place) => placeCard(place, partial)).join('') : `<div class="empty">${partial ? '일부 조건에 맞는 장소가 없습니다.' : '조건에 맞는 곳이 없어요.'}<br><button class="add-condition" type="button" data-empty-action>조건 다시 수정</button></div>`;
+      $(id).querySelectorAll('[data-place-id]').forEach((card) => card.addEventListener('click', () => selectPlace(Number(card.dataset.placeId))));
+      $(id).querySelector('[data-empty-action]')?.addEventListener('click', () => $('filters').scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
+
+    function renderMarkers(places) {
+      state.markers.forEach((marker) => marker.remove());
+      state.markers.clear();
+      places.forEach((place) => {
+        const marker = L.marker(getPosition(place)).addTo(map).bindPopup(`<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(place.category || '')}`);
+        marker.on('click', () => selectPlace(place._id));
+        state.markers.set(place._id, marker);
+      });
+    }
+
+    function selectPlace(id) {
+      const place = state.places.find((item) => item._id === id);
+      if (!place) return;
+      state.selectedId = id;
+      const position = getPosition(place);
+      map.setView(position, 16, { animate: true });
+      state.markers.get(id)?.openPopup();
+      $('detailName').textContent = place.name || '이름 없음';
+      $('detailInfo').textContent = `${place.category || '업종 미상'} · ${place.address || '주소 미상'}${place.phone ? ` · ${place.phone}` : ''}`;
+      $('detailOptions').innerHTML = Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}: ${value === true ? '있음' : '없음'}</span>`).join('');
+      $('detail').classList.add('open');
+      render();
+    }
+
+    function showBrowse(situationKey) {
+      const situation = situations[situationKey];
+      state.situation = situationKey;
+      state.activeOptions = new Set(situation.options);
+      $('situationLabel').textContent = `${situation.label} · 통합 탐색`;
+      $('situationScreen').classList.remove('active');
+      $('browseScreen').classList.add('active');
+      $('panel').classList.add('browse');
+      render();
+    }
+
+    function showSituation() {
+      state.situation = null;
+      state.activeOptions.clear();
+      $('browseScreen').classList.remove('active');
+      $('situationScreen').classList.add('active');
+      $('panel').classList.remove('browse');
+      $('detail').classList.remove('open');
+    }
+
+    function render() {
+      renderFilters();
+      const { full, partial } = groups();
+      const shown = [...full, ...partial];
+      renderCards('fullResults', full, false);
+      renderCards('partialResults', partial, true);
+      renderMarkers(shown);
+      $('dataCount').textContent = `${state.places.length}개 장소`;
+      $('fullCount').textContent = `${full.length}곳`;
+      $('partialCount').textContent = `${partial.length}곳`;
+      $('summary').innerHTML = state.activeOptions.size ? `<strong>${shown.length}곳</strong>이 선택 조건과 일부 또는 모두 일치합니다.` : `<strong>${full.length}곳</strong>의 전체 장소를 표시하고 있습니다.`;
+    }
+
+    $('topSearch').addEventListener('input', (event) => { state.query = event.target.value.trim(); render(); });
+    ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach((eventName) => $('quickFilters').addEventListener(eventName, (event) => event.stopPropagation(), { passive: true }));
+    $('clearTopSearch').addEventListener('click', () => { state.query = ''; $('topSearch').value = ''; render(); });
+    $('closeDetail').addEventListener('click', () => { state.selectedId = null; $('detail').classList.remove('open'); render(); });
+    $('changeSituation').addEventListener('click', showSituation);
+    $('addCondition').addEventListener('click', () => {
+      $('filters').classList.toggle('expanded');
+      $('addCondition').textContent = $('filters').classList.contains('expanded') ? '− 조건 접기' : '+ 조건 추가';
+    });
+    document.querySelectorAll('[data-situation]').forEach((button) => button.addEventListener('click', () => showBrowse(button.dataset.situation)));
+
+    fetch(DATA_URL).then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); }).then((places) => {
+      state.places = places.map((place, index) => ({ ...place, _id: index }));
+      const coordinates = state.places.map(getPosition);
+      if (coordinates.length) map.fitBounds(L.latLngBounds(coordinates), { padding: [28, 28], maxZoom: 15 });
+      render();
+    }).catch((error) => {
+      $('dataCount').textContent = '로드 실패';
+      $('summary').textContent = 'JSON을 불러오지 못했습니다. 로컬 서버에서 페이지를 실행해 주세요.';
+      console.error('장소 데이터 로딩 실패:', error);
+    });
+  </script>
+</body>
+</html>
