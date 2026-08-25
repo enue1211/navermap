@@ -50,6 +50,7 @@
     .eyebrow { margin: 0 0 8px; color: var(--green); font: 700 12px 'Outfit', sans-serif; letter-spacing: 0; text-transform: uppercase; }
     h1 { margin: 0; font-size: 28px; line-height: 1.18; letter-spacing: 0; }
     .intro { margin: 10px 0 24px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    #browseScreen > .intro { margin: 4px 0 10px; }
     .search { display: flex; gap: 8px; margin-bottom: 14px; }
     .search input { min-width: 0; flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; outline: none; }
     .search input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(3,199,90,.12); }
@@ -129,7 +130,6 @@
     <section class="map-side" aria-label="장소 지도">
       <div id="map"></div>
       <div class="map-overlay">
-        <div class="brand"><span class="brand-mark">N</span><span>건대입구 장소 탐색</span></div>
         <div class="map-note">Leaflet + OpenStreetMap · 수집된 실제 좌표로 표시됩니다</div>
       </div>
       <div class="map-header">
