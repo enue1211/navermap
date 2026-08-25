@@ -347,6 +347,9 @@
     let panelDragStartY = null;
     let panelDragStartHeight = null;
     let panelWasDragged = false;
+    let panelSwipeStartY = null;
+    let panelSwipeStartHeight = null;
+    let panelSwipeTarget = null;
     const setPanelHeight = (height) => {
       const appHeight = $('panel').parentElement.clientHeight;
       const minHeight = appHeight * .3;
@@ -385,6 +388,32 @@
       panelDragStartHeight = null;
     });
     $('panelHandle').addEventListener('pointercancel', () => { panelDragStartY = null; panelDragStartHeight = null; panelWasDragged = false; });
+
+    $('panel').addEventListener('pointerdown', (event) => {
+      if (event.target.closest('button, input, a, [role="button"]') || event.target === $('panelHandle')) return;
+      panelSwipeStartY = event.clientY;
+      panelSwipeStartHeight = $('panel').offsetHeight;
+      panelSwipeTarget = event.target;
+      $('panel').setPointerCapture(event.pointerId);
+    });
+    $('panel').addEventListener('pointermove', (event) => {
+      if (panelSwipeStartY === null) return;
+      const deltaY = event.clientY - panelSwipeStartY;
+      if (Math.abs(deltaY) <= 40) return;
+      setPanelHeight(deltaY < 0 ? $('panel').parentElement.clientHeight * .7 : $('panel').parentElement.clientHeight * .3);
+      panelSwipeStartY = null;
+      panelSwipeStartHeight = null;
+      panelSwipeTarget = null;
+    });
+    $('panel').addEventListener('pointerup', (event) => {
+      if (panelSwipeStartY === null) return;
+      const deltaY = event.clientY - panelSwipeStartY;
+      if (Math.abs(deltaY) > 40) setPanelHeight(deltaY < 0 ? $('panel').parentElement.clientHeight * .7 : $('panel').parentElement.clientHeight * .3);
+      panelSwipeStartY = null;
+      panelSwipeStartHeight = null;
+      panelSwipeTarget = null;
+    });
+    $('panel').addEventListener('pointercancel', () => { panelSwipeStartY = null; panelSwipeStartHeight = null; panelSwipeTarget = null; });
 
     $('topSearch').addEventListener('input', (event) => { state.query = event.target.value.trim(); render(); });
     ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach((eventName) => $('quickFilters').addEventListener(eventName, (event) => event.stopPropagation(), { passive: true }));
