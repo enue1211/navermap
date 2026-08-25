@@ -265,14 +265,13 @@
     function render() {
       renderFilters();
       const { full, partial } = groups();
-      const shown = [...full, ...partial];
       renderCards('fullResults', full, false);
       renderCards('partialResults', partial, true);
-      renderMarkers(shown);
+      renderMarkers(full);
       $('dataCount').textContent = `${state.places.length}개 장소`;
       $('fullCount').textContent = `${full.length}곳`;
       $('partialCount').textContent = `${partial.length}곳`;
-      $('summary').innerHTML = state.activeOptions.size ? `<strong>${shown.length}곳</strong>이 선택 조건과 일부 또는 모두 일치합니다.` : `<strong>${full.length}곳</strong>의 전체 장소를 표시하고 있습니다.`;
+      $('summary').innerHTML = state.activeOptions.size ? `<strong>${full.length}곳</strong>이 모든 선택 조건과 일치합니다.` : `<strong>${full.length}곳</strong>의 전체 장소를 표시하고 있습니다.`;
     }
 
     $('topSearch').addEventListener('input', (event) => { state.query = event.target.value.trim(); render(); });
