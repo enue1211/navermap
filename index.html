@@ -35,10 +35,16 @@
     .leaflet-popup { margin-bottom: 12px; }
     .leaflet-popup-content-wrapper { width: min(250px, calc(100vw - 48px)); border-radius: 16px; box-shadow: 0 10px 26px rgba(26,48,35,.2); }
     .leaflet-popup-content { width: auto !important; margin: 12px 14px; font-weight: 700; line-height: 1.45; }
+    .place-popup-options { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .place-marker { width: 22px; height: 22px; border: 3px solid #fff; border-radius: 50% 50% 50% 0; background: #7c8a82; box-shadow: 0 2px 6px rgba(26,48,35,.3); transform: rotate(-45deg); }
+    .place-marker.selected { background: var(--green); transform: scale(1.2) rotate(-45deg); }
+    .place-marker.partial { background: var(--coral); }
+    .place-marker.partial.selected { background: #d94d43; }
     .panel { position: absolute; z-index: 600; inset: auto 0 0; max-height: 74%; padding: 22px 18px 30px; overflow: auto; background: rgba(255,255,255,.98); border-radius: 26px 26px 0 0; box-shadow: 0 -14px 34px rgba(26,48,35,.16); transform: translateY(0); transition: transform .28s ease; }
     .panel.browse { max-height: 67%; }
-    .panel.hidden { transform: translateY(calc(100% - 40px)); }
-    .panel-handle { width: 42px; height: 5px; border-radius: 8px; margin: -9px auto 17px; background: #d4ded7; }
+    .panel.hidden { z-index: 1100; transform: translateY(50%); }
+    .panel-handle { width: 42px; height: 5px; border-radius: 8px; margin: -9px auto 17px; background: #d4ded7; cursor: grab; touch-action: none; }
+    .panel-handle:active { cursor: grabbing; }
     .screen { display: none; }
     .screen.active { display: block; }
     .eyebrow { margin: 0 0 8px; color: var(--green); font: 700 12px 'Outfit', sans-serif; letter-spacing: 0; text-transform: uppercase; }
@@ -52,6 +58,7 @@
     .section-head h2 { margin: 0; font-size: 16px; }
     .count { color: var(--muted); font-size: 12px; }
     .add-condition { border: 0; padding: 0; background: transparent; color: var(--green); font-size: 12px; font-weight: 700; }
+    #addCondition { padding-bottom: 9px; font-size: 16px; }
     .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .filters:not(.expanded) .filter:not(.active) { display: none; }
     .filter { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--muted); text-align: left; transition: .18s ease; }
@@ -85,7 +92,7 @@
     .situation:hover { border-color: var(--green); background: #edfbf2; }
     .screen-title { margin: 0; font-size: 21px; }
     .screen-copy { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .detail { position: fixed; z-index: 1000; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 42vh; overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
+    .detail { position: fixed; z-index: 1200; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 42vh; overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
     .detail.open { display: block; }
     .detail-top { display: flex; justify-content: space-between; gap: 12px; }
     .detail h2 { margin: 0; font-size: 17px; }
@@ -116,7 +123,7 @@
       </div>
     </section>
     <section class="panel" id="panel">
-      <div class="panel-handle"></div>
+      <div class="panel-handle" id="panelHandle" role="button" tabindex="0" aria-label="조건 패널 접기 또는 펼치기"></div>
       <div class="screen active" id="situationScreen">
         <p class="eyebrow">Situation Finder</p>
         <h1>어떤 상황에서<br>방문하시나요?</h1>
@@ -218,11 +225,16 @@
       $(id).querySelector('[data-empty-action]')?.addEventListener('click', () => $('filters').scrollIntoView({ behavior: 'smooth', block: 'center' }));
     }
 
-    function renderMarkers(places) {
+    const placeOptionsMarkup = (place) => Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}: ${value === true ? '있음' : '없음'}</span>`).join('');
+
+    function renderMarkers(fullPlaces, partialPlaces) {
       state.markers.forEach((marker) => marker.remove());
       state.markers.clear();
-      places.forEach((place) => {
-        const marker = L.marker(getPosition(place)).addTo(map).bindPopup(`<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(place.category || '')}`);
+      [...fullPlaces.map((place) => ({ place, isPartial: false })), ...partialPlaces.map((place) => ({ place, isPartial: true }))].forEach(({ place, isPartial }) => {
+        const markerClass = `place-marker ${isPartial ? 'partial' : ''} ${state.selectedId === place._id ? 'selected' : ''}`;
+        const popupLabel = isPartial ? '<br><small>일부 조건 일치</small>' : '';
+        const icon = L.divIcon({ className: '', html: `<div class="${markerClass}"></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22] });
+        const marker = L.marker(getPosition(place), { icon }).addTo(map).bindPopup(`<strong>${escapeHtml(place.name)}</strong>${popupLabel}<br>${escapeHtml(place.category || '')}`);
         marker.on('click', () => selectPlace(place._id));
         state.markers.set(place._id, marker);
       });
@@ -232,20 +244,22 @@
       const place = state.places.find((item) => item._id === id);
       if (!place) return;
       state.selectedId = id;
+      $('panel').classList.add('hidden');
       const position = getPosition(place);
       map.setView(position, 16, { animate: true });
-      state.markers.get(id)?.openPopup();
       $('detailName').textContent = place.name || '이름 없음';
       $('detailInfo').textContent = `${place.category || '업종 미상'} · ${place.address || '주소 미상'}${place.phone ? ` · ${place.phone}` : ''}`;
-      $('detailOptions').innerHTML = Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}: ${value === true ? '있음' : '없음'}</span>`).join('');
+      $('detailOptions').innerHTML = placeOptionsMarkup(place);
       $('detail').classList.add('open');
       render();
+      state.markers.get(id)?.openPopup();
     }
 
     function showBrowse(situationKey) {
       const situation = situations[situationKey];
       state.situation = situationKey;
       state.activeOptions = new Set(situation.options);
+      $('panel').classList.remove('hidden');
       $('situationLabel').textContent = `${situation.label} · 통합 탐색`;
       $('situationScreen').classList.remove('active');
       $('browseScreen').classList.add('active');
@@ -256,6 +270,7 @@
     function showSituation() {
       state.situation = null;
       state.activeOptions.clear();
+      $('panel').classList.remove('hidden');
       $('browseScreen').classList.remove('active');
       $('situationScreen').classList.add('active');
       $('panel').classList.remove('browse');
@@ -267,17 +282,51 @@
       const { full, partial } = groups();
       renderCards('fullResults', full, false);
       renderCards('partialResults', partial, true);
-      renderMarkers(full);
+      renderMarkers(full, partial);
       $('dataCount').textContent = `${state.places.length}개 장소`;
       $('fullCount').textContent = `${full.length}곳`;
       $('partialCount').textContent = `${partial.length}곳`;
       $('summary').innerHTML = state.activeOptions.size ? `<strong>${full.length}곳</strong>이 모든 선택 조건과 일치합니다.` : `<strong>${full.length}곳</strong>의 전체 장소를 표시하고 있습니다.`;
     }
 
+    let panelDragStartY = null;
+    let panelWasDragged = false;
+    $('panelHandle').addEventListener('click', () => {
+      if (panelWasDragged) {
+        panelWasDragged = false;
+        return;
+      }
+      $('panel').classList.toggle('hidden');
+    });
+    $('panelHandle').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        $('panel').classList.toggle('hidden');
+      }
+    });
+    $('panelHandle').addEventListener('pointerdown', (event) => {
+      panelDragStartY = event.clientY;
+      panelWasDragged = false;
+      $('panelHandle').setPointerCapture(event.pointerId);
+    });
+    $('panelHandle').addEventListener('pointermove', (event) => {
+      if (panelDragStartY !== null && Math.abs(event.clientY - panelDragStartY) > 8) panelWasDragged = true;
+    });
+    $('panelHandle').addEventListener('pointerup', (event) => {
+      if (panelDragStartY !== null && event.clientY - panelDragStartY > 24) $('panel').classList.add('hidden');
+      panelDragStartY = null;
+    });
+    $('panelHandle').addEventListener('pointercancel', () => { panelDragStartY = null; panelWasDragged = false; });
+
     $('topSearch').addEventListener('input', (event) => { state.query = event.target.value.trim(); render(); });
     ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach((eventName) => $('quickFilters').addEventListener(eventName, (event) => event.stopPropagation(), { passive: true }));
     $('clearTopSearch').addEventListener('click', () => { state.query = ''; $('topSearch').value = ''; render(); });
-    $('closeDetail').addEventListener('click', () => { state.selectedId = null; $('detail').classList.remove('open'); render(); });
+    $('closeDetail').addEventListener('click', () => {
+      state.selectedId = null;
+      $('detail').classList.remove('open');
+      $('panel').classList.remove('hidden');
+      render();
+    });
     $('changeSituation').addEventListener('click', showSituation);
     $('addCondition').addEventListener('click', () => {
       $('filters').classList.toggle('expanded');
