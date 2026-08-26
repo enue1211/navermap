@@ -126,6 +126,9 @@
     .close { width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--soft); color: var(--muted); }
     .detail p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .detail-options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+    .detail-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .final-select { flex: 1; padding: 11px 14px; border: 1px solid var(--green); border-radius: 11px; background: var(--green); color: #fff; font-weight: 700; }
+    .final-select.selected { border-color: #08783a; background: #e2f8e9; color: #08783a; }
     @media (max-width: 430px) {
       body { background: var(--paper); }
       .app { width: 100%; height: 100vh; min-height: 640px; box-shadow: none; }
@@ -180,6 +183,7 @@
   <aside class="detail" id="detail" aria-live="polite">
     <div class="detail-top"><h2 id="detailName"></h2><button class="close" id="closeDetail" type="button" aria-label="상세 닫기">×</button></div>
     <p id="detailInfo"></p><div class="detail-options" id="detailOptions"></div>
+    <div class="detail-actions"><button class="final-select" id="finalSelect" type="button">최종 장소로 선택</button></div>
   </aside>
   <aside class="preset-sheet" id="presetSheet" aria-hidden="true">
     <section class="preset-dialog" role="dialog" aria-modal="true" aria-labelledby="presetTitle">
@@ -191,6 +195,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const DATA_URL = './places_data_02.json';
+    const LOG_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxxxeS9qjXCX7MvzAqoZ2kZGk8PkfjgIWO1beC54Ed56Jx5vTijzlE888ChsHbHplzSjQ/exec';
     const mapCenter = [37.5408, 127.0693];
     const optionLabels = { parking: '주차', high_chair: '유아 의자', group_seats: '단체석', room: '룸', reservation: '예약', conversation: '대화하기 좋은', comfortable_seat: '편안한 좌석', pet_friendly: '반려동물', liquor_available: '콜키지 가능', late_night_early: '심야영업' };
     const situations = {
@@ -198,7 +203,12 @@
       friends: { label: '친구 모임', options: ['reservation', 'conversation', 'comfortable_seat'] },
       dinner: { label: '회식', options: ['group_seats', 'room', 'reservation'] }
     };
-    const state = { places: [], activeOptions: new Set(), query: '', markers: new Map(), selectedId: null, situation: null };
+    const state = {
+      places: [], activeOptions: new Set(), query: '', markers: new Map(), selectedId: null, situation: null,
+      finalSelectedId: null, sessionId: crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`,
+      sessionStartedAt: Date.now(), detailOpenedAt: null, detailViewCount: 0, detailDwellSeconds: 0,
+      zeroResultsOccurred: false, zeroRecoveryActions: [], tagToggleLogs: []
+    };
     const map = L.map('map', { zoomControl: false }).setView(mapCenter, 15);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
@@ -226,7 +236,9 @@
       $('quickFilters').innerHTML = keys.map((key) => `<button class="quick-filter ${state.activeOptions.has(key) ? 'active' : ''}" data-quick-option="${escapeHtml(key)}" onclick="toggleQuickOption('${escapeHtml(key)}')" type="button">${escapeHtml(optionLabels[key] || key)}</button>`).join('');
       $('filters').querySelectorAll('[data-option]').forEach((button) => button.addEventListener('click', () => {
         const key = button.dataset.option;
-        state.activeOptions.has(key) ? state.activeOptions.delete(key) : state.activeOptions.add(key);
+        const enabled = !state.activeOptions.has(key);
+        enabled ? state.activeOptions.add(key) : state.activeOptions.delete(key);
+        state.tagToggleLogs.push({ tag: key, enabled, timestamp: new Date().toISOString() });
         render();
       }));
     }
@@ -269,7 +281,9 @@
     });
     function toggleQuickOption(key) {
       if (chipDragged) { chipDragStart = null; return; }
-      state.activeOptions.has(key) ? state.activeOptions.delete(key) : state.activeOptions.add(key);
+      const enabled = !state.activeOptions.has(key);
+      enabled ? state.activeOptions.add(key) : state.activeOptions.delete(key);
+      state.tagToggleLogs.push({ tag: key, enabled, timestamp: new Date().toISOString(), source: 'quick-filter' });
       render();
       chipDragStart = null;
     }
@@ -283,7 +297,10 @@
     function renderCards(id, places, partial) {
       $(id).innerHTML = places.length ? places.map((place) => placeCard(place, partial)).join('') : `<div class="empty">${partial ? '일부 조건에 맞는 장소가 없습니다.' : '조건에 맞는 곳이 없어요.'}<br><button class="add-condition" type="button" data-empty-action>조건 다시 수정</button></div>`;
       $(id).querySelectorAll('[data-place-id]').forEach((card) => card.addEventListener('click', () => selectPlace(Number(card.dataset.placeId))));
-      $(id).querySelector('[data-empty-action]')?.addEventListener('click', () => $('filters').scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      $(id).querySelector('[data-empty-action]')?.addEventListener('click', () => {
+        state.zeroRecoveryActions.push({ action: '조건 다시 수정', timestamp: new Date().toISOString() });
+        $('filters').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
     }
 
     const placeOptionsMarkup = (place) => Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}: ${value === true ? '있음' : '없음'}</span>`).join('');
@@ -304,16 +321,66 @@
     function selectPlace(id) {
       const place = state.places.find((item) => item._id === id);
       if (!place) return;
+      closeDetail(false);
       state.selectedId = id;
+      state.detailOpenedAt = Date.now();
+      state.detailViewCount += 1;
       $('panel').classList.add('hidden');
       const position = getPosition(place);
       map.setView(position, 16, { animate: true });
       $('detailName').textContent = place.name || '이름 없음';
       $('detailInfo').textContent = `${place.category || '업종 미상'} · ${place.address || '주소 미상'}${place.phone ? ` · ${place.phone}` : ''}`;
       $('detailOptions').innerHTML = placeOptionsMarkup(place);
+      $('finalSelect').textContent = state.finalSelectedId === id ? '최종 선택됨' : '최종 장소로 선택';
+      $('finalSelect').classList.toggle('selected', state.finalSelectedId === id);
       $('detail').classList.add('open');
       render();
       state.markers.get(id)?.openPopup();
+    }
+
+    function closeDetail(reopenPanel = true) {
+      if (state.detailOpenedAt !== null) {
+        state.detailDwellSeconds += (Date.now() - state.detailOpenedAt) / 1000;
+        state.detailOpenedAt = null;
+      }
+      $('detail').classList.remove('open');
+      if (reopenPanel) $('panel').classList.remove('hidden');
+    }
+
+    function buildLogPayload() {
+      const place = state.places.find((item) => item._id === state.finalSelectedId);
+      return {
+        '타임스탬프': new Date().toISOString(),
+        '세션ID': state.sessionId,
+        '선택 프리셋': state.situation ? situations[state.situation]?.label || state.situation : '',
+        '최종 선택 장소': place?.name || '',
+        '총 소요시간(초)': Math.round((Date.now() - state.sessionStartedAt) / 1000),
+        '상세보기 횟수': state.detailViewCount,
+        '상세 체류시간(초)': Math.round(state.detailDwellSeconds + (state.detailOpenedAt ? (Date.now() - state.detailOpenedAt) / 1000 : 0)),
+        '0건 발생 여부': state.zeroResultsOccurred ? 'Y' : 'N',
+        '0건 복구 액션': JSON.stringify(state.zeroRecoveryActions),
+        '태그 토글 상세 로그': JSON.stringify(state.tagToggleLogs)
+      };
+    }
+
+    function sendLog(payload) {
+      if (!LOG_ENDPOINT) return;
+      const body = JSON.stringify(payload);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(LOG_ENDPOINT, new Blob([body], { type: 'text/plain;charset=utf-8' }));
+      } else {
+        fetch(LOG_ENDPOINT, { method: 'POST', mode: 'no-cors', body, keepalive: true }).catch(() => {});
+      }
+    }
+
+    function finalizePlace() {
+      if (state.selectedId === null) return;
+      state.finalSelectedId = state.selectedId;
+      const place = state.places.find((item) => item._id === state.finalSelectedId);
+      $('finalSelect').textContent = '최종 선택됨';
+      $('finalSelect').classList.add('selected');
+      sendLog(buildLogPayload());
+      $('detailInfo').textContent = `${place.name || '이름 없음'}을(를) 최종 장소로 선택했습니다.`;
     }
 
     function showBrowse(situationKey) {
@@ -342,6 +409,7 @@
       renderFilters();
       renderPresets();
       const { full, partial } = groups();
+      if (state.activeOptions.size && full.length === 0) state.zeroResultsOccurred = true;
       renderCards('fullResults', full, false);
       renderCards('partialResults', partial, true);
       renderMarkers(full, partial);
@@ -436,11 +504,11 @@
     ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach((eventName) => $('quickFilters').addEventListener(eventName, (event) => event.stopPropagation(), { passive: true }));
     $('clearTopSearch').addEventListener('click', () => { state.query = ''; $('topSearch').value = ''; render(); });
     $('closeDetail').addEventListener('click', () => {
+      closeDetail();
       state.selectedId = null;
-      $('detail').classList.remove('open');
-      $('panel').classList.remove('hidden');
       render();
     });
+    $('finalSelect').addEventListener('click', finalizePlace);
     $('closePreset').addEventListener('click', closePreset);
     $('applyPreset').addEventListener('click', closePreset);
     $('editPreset').addEventListener('click', () => {
