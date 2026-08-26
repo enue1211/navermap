@@ -8,6 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "y7z8y20do8");
+  </script>
   <style>
     :root { --green: #03c75a; --ink: #17211b; --muted: #68736d; --line: #e4e9e5; --paper: #fff; --soft: #f4f7f5; --coral: #ef6255; }
     * { box-sizing: border-box; }
@@ -41,7 +48,7 @@
     .place-marker.partial { background: var(--coral); }
     .place-marker.partial.selected { background: #d94d43; }
     .panel { position: absolute; z-index: 600; inset: auto 0 0; max-height: 74%; padding: 14px 18px 30px; overflow: auto; background: rgba(255,255,255,.98); border-radius: 26px 26px 0 0; box-shadow: 0 -14px 34px rgba(26,48,35,.16); transform: translateY(0); transition: height .18s ease, transform .28s ease; }
-    .panel.browse { height: 30%; max-height: 70%; }
+    .panel.browse { height: 240px; max-height: 412px; }
     .panel.hidden { z-index: 1100; transform: translateY(50%); }
     .panel-handle { width: 42px; height: 5px; border-radius: 8px; margin: -9px auto 17px; background: #d4ded7; cursor: grab; touch-action: none; }
     .panel-handle:active { cursor: grabbing; }
@@ -350,11 +357,17 @@
     let panelSwipeStartY = null;
     let panelSwipeStartHeight = null;
     let panelSwipeTarget = null;
+    const getPanelBaseHeight = () => Math.min(240, $('panel').parentElement.clientHeight * .7);
     const setPanelHeight = (height) => {
       const appHeight = $('panel').parentElement.clientHeight;
-      const minHeight = appHeight * .3;
-      const maxHeight = appHeight * .7;
+      const minHeight = getPanelBaseHeight();
+      const maxHeight = Math.min(412, appHeight * .7);
       $('panel').style.height = `${Math.min(maxHeight, Math.max(minHeight, height))}px`;
+    };
+    const togglePanelSnap = () => {
+      const panel = $('panel');
+      const maxHeight = Math.min(412, panel.parentElement.clientHeight * .7);
+      setPanelHeight(panel.offsetHeight <= getPanelBaseHeight() + 1 ? maxHeight : getPanelBaseHeight());
     };
     $('panelHandle').addEventListener('click', () => {
       if (panelWasDragged) {
@@ -414,6 +427,10 @@
       panelSwipeTarget = null;
     });
     $('panel').addEventListener('pointercancel', () => { panelSwipeStartY = null; panelSwipeStartHeight = null; panelSwipeTarget = null; });
+    $('panel').addEventListener('click', (event) => {
+      if (event.target.closest('button, input, a, [role="button"], .place-card')) return;
+      togglePanelSnap();
+    });
 
     $('topSearch').addEventListener('input', (event) => { state.query = event.target.value.trim(); render(); });
     ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach((eventName) => $('quickFilters').addEventListener(eventName, (event) => event.stopPropagation(), { passive: true }));
