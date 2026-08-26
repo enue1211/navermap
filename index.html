@@ -38,7 +38,6 @@
     .quick-filter.active { border-color: var(--green); background: var(--green); color: #fff; font-weight: 700; }
     .brand { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(26,48,35,.12); font-weight: 800; pointer-events: auto; }
     .brand-mark { width: 24px; height: 24px; border-radius: 8px 8px 8px 2px; background: var(--green); display: grid; place-items: center; color: #fff; font-size: 13px; }
-    .map-note { margin-top: 10px; width: max-content; max-width: 100%; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.84); color: var(--muted); font-size: 12px; }
     .leaflet-popup { margin-bottom: 12px; }
     .leaflet-popup-content-wrapper { width: min(250px, calc(100vw - 48px)); border-radius: 16px; box-shadow: 0 10px 26px rgba(26,48,35,.2); }
     .leaflet-popup-content { width: auto !important; margin: 12px 14px; font-weight: 700; line-height: 1.45; }
@@ -150,9 +149,6 @@
   <main class="app">
     <section class="map-side" aria-label="장소 지도">
       <div id="map"></div>
-      <div class="map-overlay">
-        <div class="map-note">Leaflet + OpenStreetMap · 수집된 실제 좌표로 표시됩니다</div>
-      </div>
       <div class="map-header">
         <label class="top-search" aria-label="장소 검색">
           <span class="top-search-icon">⌕</span>
@@ -246,9 +242,9 @@
       sessionStartedAt: Date.now(), detailOpenedAt: null, detailViewCount: 0, detailDwellSeconds: 0,
       zeroResultsOccurred: false, zeroRecoveryActions: [], tagToggleLogs: []
     };
-    const map = L.map('map', { zoomControl: false }).setView(mapCenter, 15);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView(mapCenter, 15);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
     const $ = (id) => document.getElementById(id);
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
