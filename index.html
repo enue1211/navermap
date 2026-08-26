@@ -350,27 +350,25 @@
     function buildLogPayload() {
       const place = state.places.find((item) => item._id === state.finalSelectedId);
       return {
-        '타임스탬프': new Date().toISOString(),
-        '세션ID': state.sessionId,
-        '선택 프리셋': state.situation ? situations[state.situation]?.label || state.situation : '',
-        '최종 선택 장소': place?.name || '',
-        '총 소요시간(초)': Math.round((Date.now() - state.sessionStartedAt) / 1000),
-        '상세보기 횟수': state.detailViewCount,
-        '상세 체류시간(초)': Math.round(state.detailDwellSeconds + (state.detailOpenedAt ? (Date.now() - state.detailOpenedAt) / 1000 : 0)),
-        '0건 발생 여부': state.zeroResultsOccurred ? 'Y' : 'N',
-        '0건 복구 액션': JSON.stringify(state.zeroRecoveryActions),
-        '태그 토글 상세 로그': JSON.stringify(state.tagToggleLogs)
+        timestamp: new Date().toISOString(),
+        sessionId: state.sessionId,
+        selectedPreset: state.situation ? situations[state.situation]?.label || state.situation : '',
+        finalSelectedPlace: place?.name || '',
+        totalDurationSec: Math.round((Date.now() - state.sessionStartedAt) / 1000),
+        detailViewCount: state.detailViewCount,
+        detailStayDurationSec: Math.round(state.detailDwellSeconds + (state.detailOpenedAt ? (Date.now() - state.detailOpenedAt) / 1000 : 0)),
+        zeroResultTriggered: state.zeroResultsOccurred,
+        zeroResultRecoveryAction: JSON.stringify(state.zeroRecoveryActions),
+        tagToggleLogs: state.tagToggleLogs
       };
     }
 
     function sendLog(payload) {
       if (!LOG_ENDPOINT) return;
       const body = JSON.stringify(payload);
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(LOG_ENDPOINT, new Blob([body], { type: 'text/plain;charset=utf-8' }));
-      } else {
-        fetch(LOG_ENDPOINT, { method: 'POST', mode: 'no-cors', body, keepalive: true }).catch(() => {});
-      }
+      fetch(LOG_ENDPOINT, { method: 'POST', mode: 'no-cors', body, keepalive: true }).catch(() => {
+        if (navigator.sendBeacon) navigator.sendBeacon(LOG_ENDPOINT, new Blob([body], { type: 'text/plain;charset=utf-8' }));
+      });
     }
 
     function finalizePlace() {
