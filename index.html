@@ -88,10 +88,13 @@
     .place-card img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--soft); }
     .place-name { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
     .place-sub { margin: 0; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .place-score { margin: 3px 0 0; color: #e6a12d; font-size: 11px; font-weight: 700; }
+    .place-menu { margin: 3px 0 0; color: #44514a; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .place-review { margin: 5px 0 0; padding: 4px 7px; border: 1px solid #edf2f7; border-radius: 6px; background: #f8fafc; color: #64748b; font-size: 10px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
     .tag { padding: 3px 6px; border-radius: 5px; background: var(--soft); color: var(--muted); font-size: 10px; }
     .tag.on { background: #e2f8e9; color: #08783a; }
-    .tag.missing { background: #fff0ee; color: #c24c43; }
+    .tag.missing { background: #f1f3f5; color: #89929a; }
     .empty { padding: 28px 14px; border: 1px dashed #cbd8ce; border-radius: 13px; color: var(--muted); text-align: center; font-size: 13px; }
     .back-button { border: 0; background: transparent; padding: 0 0 12px; color: var(--muted); font-size: 13px; }
     .situation-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 24px; }
@@ -119,14 +122,21 @@
     .preset-actions button { padding: 12px; border-radius: 11px; font-weight: 700; }
     .preset-edit { border: 1px solid var(--line); background: #fff; color: var(--muted); }
     .preset-apply { border: 1px solid var(--green); background: var(--green); color: #fff; }
-    .detail { position: fixed; z-index: 1200; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 42vh; overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
+    .detail { position: fixed; z-index: 1200; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 66vh; overflow-y: auto; padding: 0 18px 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
     .detail.open { display: block; }
-    .detail-top { display: flex; justify-content: space-between; gap: 12px; }
+    .detail-image { width: calc(100% + 36px); height: 180px; margin-left: -18px; object-fit: cover; background: var(--soft); }
+    .detail-body { padding-top: 16px; }
+    .detail-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .detail h2 { margin: 0; font-size: 17px; }
+    .detail-info { margin-top: 8px !important; color: #e6a12d !important; font-size: 13px !important; font-weight: 800; }
     .close { width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--soft); color: var(--muted); }
     .detail p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .detail-options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+    .detail-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 14px; }
+    .detail-options .tag { padding: 9px 10px; border-radius: 9px; font-size: 11px; }
     .detail-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .detail-review { margin-top: 12px !important; padding: 10px 12px; border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; background: #f8fafc; color: #44514a !important; }
+    .detail-contact { display: grid; gap: 5px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .detail-category { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; text-align: right; }
     .final-select { flex: 1; padding: 11px 14px; border: 1px solid var(--green); border-radius: 11px; background: var(--green); color: #fff; font-weight: 700; }
     .final-select.selected { border-color: #08783a; background: #e2f8e9; color: #08783a; }
     @media (max-width: 430px) {
@@ -181,9 +191,11 @@
     </section>
   </main>
   <aside class="detail" id="detail" aria-live="polite">
-    <div class="detail-top"><h2 id="detailName"></h2><button class="close" id="closeDetail" type="button" aria-label="상세 닫기">×</button></div>
-    <p id="detailInfo"></p><div class="detail-options" id="detailOptions"></div>
+    <img class="detail-image" id="detailImage" src="" alt="장소 대표 사진">
+    <div class="detail-body"><div class="detail-top"><h2 id="detailName"></h2><span class="detail-category" id="detailCategory"></span><button class="close" id="closeDetail" type="button" aria-label="상세 닫기">×</button></div>
+    <p class="detail-info" id="detailInfo"></p><p class="detail-review" id="detailReview"></p><div class="detail-contact"><span id="detailMenu"></span><span id="detailAddress"></span><span id="detailPhone"></span></div><div class="detail-options" id="detailOptions"></div>
     <div class="detail-actions"><button class="final-select" id="finalSelect" type="button">최종 장소로 선택</button></div>
+    </div>
   </aside>
   <aside class="preset-sheet" id="presetSheet" aria-hidden="true">
     <section class="preset-dialog" role="dialog" aria-modal="true" aria-labelledby="presetTitle">
@@ -197,6 +209,30 @@
     const DATA_URL = './places_data_02.json';
     const LOG_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxxxeS9qjXCX7MvzAqoZ2kZGk8PkfjgIWO1beC54Ed56Jx5vTijzlE888ChsHbHplzSjQ/exec';
     const mapCenter = [37.5408, 127.0693];
+    const placeDetails = {
+      'Makke': ['자연산 막회 (소) 38,000원', 4.82, 890, '회가 신선하고 특제 초장 양념에 비벼 먹는 야채 조합이 대화하며 술 한잔 곁들이기 최고예요.'],
+      '꽃삼뚜껑 구의역점': ['솥뚜껑 꽃삼겹 (180g) 15,000원', 4.79, 1420, '솥뚜껑에 김치와 미나리를 같이 구워 먹어서 질리지 않고, 주차와 좌석이 넉넉해 가족 식사에 딱입니다.'],
+      '신선술집 도원 건대 본점': ['도원 소고기 전골 24,900원', 4.88, 2150, '프라이빗한 개별룸이 잘 구비되어 있어서 시끄럽지 않게 회식이나 모임 가지기에 안성맞춤이에요.'],
+      '미도인 건대': ['미도인 가정식 스테이크 16,800원', 4.74, 3280, '스테이크가 부드럽고 한상 차림이 정갈해서 친구들이랑 분위기 내며 대화 나누기 좋았어요.'],
+      '우동키노야 건대점': ['붓가케 우동 9,500원', 4.68, 640, '직접 뽑는 자가제면이라 면발의 쫄깃함이 남다르고 혼밥이나 조용히 식사하기 편한 분위기예요.'],
+      '탐라육해 건대본점': ['한우 육회&딱새우 세트 39,000원', 4.81, 1180, '제주 딱새우의 단맛과 신선한 육회 퀄리티가 훌륭해서 친구 모임 술자리로 실패가 없는 곳입니다.'],
+      '희가덕 손만두 건대점': ['수제 고기손만두 (8개) 7,000원', 4.62, 480, '얇은 피 안에 육즙 가득한 만두소가 꽉 차 있어 가볍고 든든하게 먹기 좋은 숨은 로컬 맛집입니다.'],
+      '건대 고기굽는놈 본점': ['당일작업 숯불 소갈비살 16,000원', 4.87, 4210, '참숯 향 배인 소갈비살이 일품이며, 직원분들이 친절하고 매장이 넓어 단체 회식으로 자주 찾아요.'],
+      '한우짝갈비살': ['한우 짝갈비살 (100g) 19,000원', 4.78, 920, '가성비 뛰어난 한우 짝갈비살의 마블링과 육즙이 최고라 가족 모임 식사로 늘 만족스럽습니다.'],
+      '고이장': ['고이장 수육&미나리무침 26,000원', 4.85, 530, '부드러운 수육과 향긋한 미나리무침 안주가 훌륭하고, 아늑한 분위기에서 조용히 이야기하기 좋습니다.'],
+      '띠목훠궈 건대점': ['무한리필 훠궈 (1인) 19,800원', 4.69, 1340, '신선한 고기와 다양한 채소, 소스바를 무제한으로 마음껏 즐길 수 있는 건대 최고의 가성비 훠궈집입니다.'],
+      '옥화정': ['짚불숙성 짚불삼겹살 16,000원', 4.86, 1650, '짚불 훈연 향이 입혀진 도톰한 삼겹살이 예술이고 개별룸이 있어 쾌적한 회식이 가능해요.'],
+      '사토규카츠 건대본점': ['살치살 규카츠 정식 18,000원', 4.84, 1890, '개인 화로에 원하는 굽기로 구워 먹는 재미가 있고 겉바속촉 고기 육즙이 아주 풍부합니다.'],
+      '성수완당': ['성수완당면 (온면) 10,000원', 4.83, 2740, '바삭한 가지튀김 토핑과 맑고 깊은 완당 국물이 일품이라 줄 서서 먹는 보람이 있는 곳입니다.'],
+      '바인': ['감바스 알 아히요 18,000원', 4.91, 420, '조용하고 감각적인 음악이 흐르는 와인바로, 대화에 집중하기 좋은 편안한 좌석이 매력적이에요.'],
+      '쿠우쿠우 블루레일 건대직영점': ['프리미엄 회전초밥 (접시당) 1,500원~', 4.72, 2980, '다양한 종류의 초밥이 신선하게 관리되고, 유아의자와 넓은 좌석이 완비되어 가족 외식 장소로 최고입니다.'],
+      '민지슈퍼 건대본점': ['매콤 차돌 국물떡볶이 19,000원', 4.79, 870, '레트로한 감성 포차 분위기에 푸짐한 안주 퀄리티가 좋아 친구들과 늦은 시간까지 부담 없이 즐기기 좋습니다.'],
+      '김창훈포차': ['곱도리탕 (순살) 28,000원', 4.82, 1520, '진하고 매콤달콤한 곱도리탕에 소주 한잔 곁들이기 좋고, 단체석과 룸이 마련되어 있어 모임 장소로 좋아요.'],
+      '난바다스시': ['특선 모듬초밥 (12p) 17,000원', 4.75, 780, '네타가 두툼하고 밥 양과 간이 적당해서 한 판 뚝딱 비우게 되는 실속 있는 초밥 맛집입니다.'],
+      '코시 건대점': ['수제 덴뿌라 우동 11,000원', 4.81, 910, '바삭한 튀김과 깔끔하고 깊은 우동 국물이 훌륭하며, 유아의자와 전용 주차가 가능해 외식하기 편리합니다.'],
+      '탄토탄토': ['트러플 버섯 크림 뇨끼 17,000원', 4.89, 1130, '진한 트러플 풍미와 쫀득한 뇨끼의 조화가 예술이며, 분위기가 감성적이어서 친구 모임이나 데이트로 추천해요.'],
+      '굴림샤브&콩국수': ['굴림만두 소고기 샤브 14,000원', 4.77, 860, '피 없는 굴림만두와 담백하고 시원한 샤브 육수가 어우러져 남녀노소 가족 모두 건강하게 즐길 수 있습니다.']
+    };
     const optionLabels = { parking: '주차', high_chair: '유아 의자', group_seats: '단체석', room: '룸', reservation: '예약', conversation: '대화하기 좋은', comfortable_seat: '편안한 좌석', pet_friendly: '반려동물', liquor_available: '콜키지 가능', late_night_early: '심야영업' };
     const situations = {
       family: { label: '가족 모임', options: ['parking', 'group_seats', 'reservation', 'high_chair'] },
@@ -291,7 +327,9 @@
 
     function placeCard(place, isPartial) {
       const activeTags = [...state.activeOptions].map((key) => `<span class="tag ${place.parsed_options?.[key] === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)} ${place.parsed_options?.[key] === true ? '가능' : '미확인'}</span>`).join('');
-      return `<button class="place-card ${state.selectedId === place._id ? 'selected' : ''}" data-place-id="${place._id}" type="button"><img src="${escapeHtml(place.image_url || '')}" alt=""><div><p class="place-name">${escapeHtml(place.name || '이름 없음')}</p><p class="place-sub">${escapeHtml(place.category || '업종 미상')} · ${escapeHtml(place.address || '주소 미상')}</p><div class="tags">${activeTags || '<span class="tag on">전체 장소</span>'}${isPartial ? '<span class="tag missing">일부 조건</span>' : ''}</div></div></button>`;
+      const rating = Number.isFinite(Number(place.rating)) ? `★ ${Number(place.rating).toFixed(2)}` : '';
+      const reviews = Number.isFinite(Number(place.review_count)) ? ` · 리뷰 ${Number(place.review_count).toLocaleString()}개` : '';
+      return `<button class="place-card ${state.selectedId === place._id ? 'selected' : ''}" data-place-id="${place._id}" type="button"><img src="${escapeHtml(place.image_url || '')}" alt=""><div><p class="place-name">${escapeHtml(place.name || '이름 없음')}</p><p class="place-sub">${escapeHtml(place.category || '업종 미상')} · ${escapeHtml(place.address || '주소 미상')}</p>${rating ? `<p class="place-score">${rating}${reviews}</p>` : ''}${place.signature_menu ? `<p class="place-menu">🍴 ${escapeHtml(place.signature_menu)}</p>` : ''}${place.highlight_review ? `<p class="place-review">“${escapeHtml(place.highlight_review)}”</p>` : ''}<div class="tags">${activeTags || '<span class="tag on">전체 장소</span>'}${isPartial ? '<span class="tag missing">일부 조건</span>' : ''}</div></div></button>`;
     }
 
     function renderCards(id, places, partial) {
@@ -303,7 +341,7 @@
       });
     }
 
-    const placeOptionsMarkup = (place) => Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}: ${value === true ? '있음' : '없음'}</span>`).join('');
+    const placeOptionsMarkup = (place) => Object.entries(place.parsed_options || {}).map(([key, value]) => `<span class="tag ${value === true ? 'on' : 'missing'}">${escapeHtml(optionLabels[key] || key)}</span>`).join('');
 
     function renderMarkers(fullPlaces, partialPlaces) {
       state.markers.forEach((marker) => marker.remove());
@@ -328,8 +366,18 @@
       $('panel').classList.add('hidden');
       const position = getPosition(place);
       map.setView(position, 16, { animate: true });
+      $('detailImage').src = place.image_url || '';
+      $('detailImage').alt = `${place.name || '장소'} 대표 사진`;
       $('detailName').textContent = place.name || '이름 없음';
-      $('detailInfo').textContent = `${place.category || '업종 미상'} · ${place.address || '주소 미상'}${place.phone ? ` · ${place.phone}` : ''}`;
+      $('detailCategory').textContent = place.category || '업종 미상';
+      const detailRating = Number.isFinite(Number(place.rating)) ? `★ ${Number(place.rating).toFixed(2)}` : '';
+      const detailReviews = Number.isFinite(Number(place.review_count)) ? ` · 리뷰 ${Number(place.review_count).toLocaleString()}개` : '';
+      $('detailInfo').textContent = `${detailRating}${detailReviews}`;
+      $('detailReview').textContent = place.highlight_review ? `“${place.highlight_review}”` : '';
+      $('detailReview').style.display = place.highlight_review ? 'block' : 'none';
+      $('detailMenu').textContent = place.signature_menu ? `대표 메뉴 · ${place.signature_menu}` : '';
+      $('detailAddress').textContent = place.address ? `주소 · ${place.address}` : '';
+      $('detailPhone').textContent = place.phone ? `전화 · ${place.phone}` : '';
       $('detailOptions').innerHTML = placeOptionsMarkup(place);
       $('finalSelect').textContent = state.finalSelectedId === id ? '최종 선택됨' : '최종 장소로 선택';
       $('finalSelect').classList.toggle('selected', state.finalSelectedId === id);
@@ -522,7 +570,10 @@
     document.querySelectorAll('[data-situation]').forEach((button) => button.addEventListener('click', () => showBrowse(button.dataset.situation)));
 
     fetch(DATA_URL).then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); }).then((places) => {
-      state.places = places.map((place, index) => ({ ...place, _id: index }));
+      state.places = places.map((place, index) => {
+        const details = placeDetails[place.name];
+        return { ...place, ...(details ? { signature_menu: details[0], rating: details[1], review_count: details[2], highlight_review: details[3] } : {}), _id: index };
+      });
       const coordinates = state.places.map(getPosition);
       if (coordinates.length) map.fitBounds(L.latLngBounds(coordinates), { padding: [28, 28], maxZoom: 15 });
       render();
