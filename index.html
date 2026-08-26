@@ -44,6 +44,7 @@
     .leaflet-popup-content { width: auto !important; margin: 12px 14px; font-weight: 700; line-height: 1.45; }
     .place-popup-options { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
     .place-marker { width: 22px; height: 22px; border: 3px solid #fff; border-radius: 50% 50% 50% 0; background: #7c8a82; box-shadow: 0 2px 6px rgba(26,48,35,.3); transform: rotate(-45deg); }
+    .place-marker.full { background: var(--green); }
     .place-marker.selected { background: var(--green); transform: scale(1.2) rotate(-45deg); }
     .place-marker.partial { background: var(--coral); }
     .place-marker.partial.selected { background: #d94d43; }
@@ -122,7 +123,7 @@
     .preset-actions button { padding: 12px; border-radius: 11px; font-weight: 700; }
     .preset-edit { border: 1px solid var(--line); background: #fff; color: var(--muted); }
     .preset-apply { border: 1px solid var(--green); background: var(--green); color: #fff; }
-    .detail { position: fixed; z-index: 1200; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 66vh; overflow-y: auto; padding: 0 18px 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
+    .detail { position: fixed; z-index: 1200; left: 50%; bottom: 18px; width: min(410px, calc(100vw - 20px)); max-height: 50vh; overflow-y: auto; padding: 0 18px 18px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 38px rgba(26,48,35,.22); display: none; transform: translateX(-50%); }
     .detail.open { display: block; }
     .detail-image { width: calc(100% + 36px); height: 180px; margin-left: -18px; object-fit: cover; background: var(--soft); }
     .detail-body { padding-top: 16px; }
@@ -347,7 +348,7 @@
       state.markers.forEach((marker) => marker.remove());
       state.markers.clear();
       [...fullPlaces.map((place) => ({ place, isPartial: false })), ...partialPlaces.map((place) => ({ place, isPartial: true }))].forEach(({ place, isPartial }) => {
-        const markerClass = `place-marker ${isPartial ? 'partial' : ''} ${state.selectedId === place._id ? 'selected' : ''}`;
+        const markerClass = `place-marker ${!isPartial && state.activeOptions.size ? 'full' : ''} ${isPartial ? 'partial' : ''} ${state.selectedId === place._id ? 'selected' : ''}`;
         const popupLabel = isPartial ? '<br><small>일부 조건 일치</small>' : '';
         const icon = L.divIcon({ className: '', html: `<div class="${markerClass}"></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22] });
         const marker = L.marker(getPosition(place), { icon }).addTo(map).bindPopup(`<strong>${escapeHtml(place.name)}</strong>${popupLabel}<br>${escapeHtml(place.category || '')}`);
